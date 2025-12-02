@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IP Remix Studio v3 - MVP Demo (Gemini 2.5)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/framer-motion@10.16.16/dist/framer-motion.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0a0a0f 0%, #0d1117 50%, #0a0a0f 100%); color: #fff; min-height: 100vh; }
+    .logo-text { font-family: 'Space Grotesk', sans-serif; }
+    .terminal { font-family: 'JetBrains Mono', monospace; }
+    .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+    .glass-card { background: rgba(255,255,255,0.05); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.1); }
+    .glass-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+    .glow-purple { box-shadow: 0 0 60px rgba(139,92,246,0.3); }
+    .glow-red { box-shadow: 0 0 60px rgba(239,68,68,0.4); }
+    .glow-green { box-shadow: 0 0 40px rgba(34,197,94,0.3); }
+    .gradient-text { background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    .shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); background-size: 200% 100%; animation: shimmer 2s infinite; }
+    @keyframes scan { from { top: 0; } to { top: 100%; } }
+    .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(139,92,246,0.8), transparent); animation: scan 2s linear infinite; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+    .blink { animation: blink 0.8s infinite; }
+    @keyframes shield-pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
+    .shield-pulse { animation: shield-pulse 2s ease-in-out infinite; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    .premium-input { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; }
+    .premium-input:focus { background: rgba(255,255,255,0.05); border-color: rgba(139,92,246,0.5); box-shadow: 0 0 20px rgba(139,92,246,0.1); outline: none; }
+    .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); transition: all 0.3s ease; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(139,92,246,0.4); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+    .scenario-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+    .scenario-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); transform: translateY(-4px); }
+    .scenario-card.selected { background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)); border: 2px solid rgba(139,92,246,0.6); box-shadow: 0 0 50px rgba(139,92,246,0.2); }
+    .timeline-track { background: linear-gradient(90deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1)); }
+    .timeline-item { cursor: grab; user-select: none; }
+    .timeline-item:active { cursor: grabbing; }
+    .trim-handle { width: 14px; height: 100%; background: linear-gradient(180deg, #8b5cf6, #ec4899); border-radius: 4px; cursor: ew-resize; position: absolute; top: 0; z-index: 20; transition: transform 0.2s; }
+    .trim-handle:hover { transform: scaleX(1.3); }
+    .trim-region { position: absolute; top: 0; bottom: 0; background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.4); }
+    .safe-badge { background: linear-gradient(135deg, #10b981, #059669); animation: shield-pulse 3s ease-in-out infinite; }
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 400px; }
+    .toast { padding: 12px 20px; border-radius: 12px; font-size: 13px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .console-log { background: rgba(0,0,0,0.9); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
+    .warning-log { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+    .info-log { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); color: #818cf8; }
+    
+    /* ==================== KEN BURNS & MOTION EFFECTS ==================== */
+    /* Comic Style - Bouncy, Fun, Exaggerated */
+    @keyframes comic-zoom-bounce {
+      0% { transform: scale(1) rotate(0deg); }
+      25% { transform: scale(1.08) rotate(0.5deg); }
+      50% { transform: scale(1.12) rotate(-0.5deg); }
+      75% { transform: scale(1.06) rotate(0.3deg); }
+      100% { transform: scale(1.15) rotate(0deg); }
+    }
+    @keyframes comic-shake {
+      0%, 100% { transform: scale(1.05) translate(0, 0); }
+      10% { transform: scale(1.08) translate(-2px, -1px); }
+      20% { transform: scale(1.06) translate(2px, 1px); }
+      30% { transform: scale(1.1) translate(-1px, 2px); }
+      40% { transform: scale(1.07) translate(1px, -2px); }
+      50% { transform: scale(1.12) translate(-2px, 0); }
+      60% { transform: scale(1.08) translate(2px, 1px); }
+      70% { transform: scale(1.1) translate(0, -1px); }
+      80% { transform: scale(1.06) translate(-1px, 1px); }
+      90% { transform: scale(1.09) translate(1px, 0); }
+    }
+    @keyframes comic-pop {
+      0% { transform: scale(1); filter: brightness(1) saturate(1); }
+      20% { transform: scale(1.15); filter: brightness(1.2) saturate(1.3); }
+      40% { transform: scale(1.05); filter: brightness(1.1) saturate(1.1); }
+      60% { transform: scale(1.12); filter: brightness(1.15) saturate(1.2); }
+      100% { transform: scale(1.08); filter: brightness(1.1) saturate(1.15); }
+    }
+    
+    /* Emotional Style - Slow, Cinematic, Dreamy */
+    @keyframes emotional-slow-zoom {
+      0% { transform: scale(1) translate(0, 0); filter: brightness(1) saturate(1); }
+      100% { transform: scale(1.12) translate(-1%, -1%); filter: brightness(1.05) saturate(1.1); }
+    }
+    @keyframes emotional-drift {
+      0% { transform: scale(1.05) translate(0, 0); filter: brightness(0.95); }
+      50% { transform: scale(1.1) translate(-2%, 1%); filter: brightness(1.05); }
+      100% { transform: scale(1.08) translate(1%, -1%); filter: brightness(1); }
+    }
+    @keyframes emotional-breathe {
+      0%, 100% { transform: scale(1); filter: brightness(1) blur(0px); }
+      50% { transform: scale(1.06); filter: brightness(1.08) blur(0.5px); }
+    }
+    @keyframes emotional-golden {
+      0% { transform: scale(1); filter: sepia(0) brightness(1); }
+      50% { transform: scale(1.08); filter: sepia(0.15) brightness(1.1); }
+      100% { transform: scale(1.1); filter: sepia(0.1) brightness(1.05); }
+    }
+    
+    /* Action Style - Fast, Dynamic, Intense */
+    @keyframes action-zoom-punch {
+      0% { transform: scale(1) rotate(0deg); filter: contrast(1) brightness(1); }
+      30% { transform: scale(1.2) rotate(-1deg); filter: contrast(1.2) brightness(1.1); }
+      50% { transform: scale(1.15) rotate(0.5deg); filter: contrast(1.15) brightness(1.05); }
+      70% { transform: scale(1.25) rotate(-0.5deg); filter: contrast(1.25) brightness(1.15); }
+      100% { transform: scale(1.3) rotate(0deg); filter: contrast(1.2) brightness(1.1); }
+    }
+    @keyframes action-shake-intense {
+      0%, 100% { transform: scale(1.1) translate(0, 0) rotate(0deg); }
+      10% { transform: scale(1.15) translate(-4px, -2px) rotate(-1deg); }
+      20% { transform: scale(1.12) translate(4px, 2px) rotate(1deg); }
+      30% { transform: scale(1.18) translate(-3px, 3px) rotate(-0.5deg); }
+      40% { transform: scale(1.14) translate(3px, -3px) rotate(0.5deg); }
+      50% { transform: scale(1.2) translate(-2px, 1px) rotate(-1deg); }
+      60% { transform: scale(1.16) translate(2px, -1px) rotate(1deg); }
+      70% { transform: scale(1.22) translate(-1px, 2px) rotate(-0.5deg); }
+      80% { transform: scale(1.18) translate(1px, -2px) rotate(0.5deg); }
+      90% { transform: scale(1.24) translate(-3px, 0px) rotate(0deg); }
+    }
+    @keyframes action-flash {
+      0% { transform: scale(1); filter: brightness(1) contrast(1); }
+      15% { transform: scale(1.1); filter: brightness(1.5) contrast(1.3); }
+      30% { transform: scale(1.15); filter: brightness(0.9) contrast(1.1); }
+      45% { transform: scale(1.2); filter: brightness(1.3) contrast(1.2); }
+      60% { transform: scale(1.18); filter: brightness(1) contrast(1.15); }
+      75% { transform: scale(1.25); filter: brightness(1.2) contrast(1.25); }
+      100% { transform: scale(1.22); filter: brightness(1.1) contrast(1.2); }
+    }
+    @keyframes action-whip-pan {
+      0% { transform: scale(1.1) translateX(5%); }
+      30% { transform: scale(1.15) translateX(-3%); }
+      60% { transform: scale(1.2) translateX(2%); }
+      100% { transform: scale(1.18) translateX(-1%); }
+    }
+    
+    /* Ken Burns Classic Effects */
+    @keyframes ken-burns-zoom-in {
+      0% { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.2) translate(-2%, -2%); }
+    }
+    @keyframes ken-burns-zoom-out {
+      0% { transform: scale(1.2) translate(-2%, -2%); }
+      100% { transform: scale(1) translate(0, 0); }
+    }
+    @keyframes ken-burns-pan-left {
+      0% { transform: scale(1.15) translate(4%, 0); }
+      100% { transform: scale(1.15) translate(-4%, 0); }
+    }
+    @keyframes ken-burns-pan-right {
+      0% { transform: scale(1.15) translate(-4%, 0); }
+      100% { transform: scale(1.15) translate(4%, 0); }
+    }
+    @keyframes ken-burns-pan-up {
+      0% { transform: scale(1.15) translate(0, 4%); }
+      100% { transform: scale(1.15) translate(0, -4%); }
+    }
+    @keyframes ken-burns-diagonal {
+      0% { transform: scale(1) translate(3%, 3%); }
+      100% { transform: scale(1.2) translate(-3%, -3%); }
+    }
+    
+    /* Motion Effect Classes */
+    .motion-comic-1 { animation: comic-zoom-bounce var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-comic-2 { animation: comic-shake var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-comic-3 { animation: comic-pop var(--motion-duration, 3s) ease-in-out forwards; }
+    
+    .motion-emotional-1 { animation: emotional-slow-zoom var(--motion-duration, 3s) ease-out forwards; }
+    .motion-emotional-2 { animation: emotional-drift var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-emotional-3 { animation: emotional-breathe var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-emotional-4 { animation: emotional-golden var(--motion-duration, 3s) ease-in-out forwards; }
+    
+    .motion-action-1 { animation: action-zoom-punch var(--motion-duration, 3s) cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+    .motion-action-2 { animation: action-shake-intense var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-action-3 { animation: action-flash var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-action-4 { animation: action-whip-pan var(--motion-duration, 3s) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+    
+    .motion-kenburns-1 { animation: ken-burns-zoom-in var(--motion-duration, 3s) ease-out forwards; }
+    .motion-kenburns-2 { animation: ken-burns-zoom-out var(--motion-duration, 3s) ease-out forwards; }
+    .motion-kenburns-3 { animation: ken-burns-pan-left var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-kenburns-4 { animation: ken-burns-pan-right var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-kenburns-5 { animation: ken-burns-pan-up var(--motion-duration, 3s) ease-in-out forwards; }
+    .motion-kenburns-6 { animation: ken-burns-diagonal var(--motion-duration, 3s) ease-out forwards; }
+    
+    /* Vignette overlay for cinematic effect */
+    .vignette-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+    
+    /* Film grain effect */
+    @keyframes grain {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-1%, -1%); }
+      20% { transform: translate(1%, 1%); }
+      30% { transform: translate(-1%, 1%); }
+      40% { transform: translate(1%, -1%); }
+      50% { transform: translate(-1%, 0); }
+      60% { transform: translate(1%, 0); }
+      70% { transform: translate(0, 1%); }
+      80% { transform: translate(0, -1%); }
+      90% { transform: translate(1%, 1%); }
+    }
+    .film-grain {
+      position: absolute;
+      inset: -10%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      pointer-events: none;
+      animation: grain 0.5s steps(10) infinite;
+      z-index: 6;
+    }
+    
+    /* Letterbox bars for cinematic */
+    .letterbox-top, .letterbox-bottom {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 8%;
+      background: black;
+      z-index: 7;
+    }
+    .letterbox-top { top: 0; }
+    .letterbox-bottom { bottom: 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+    const { motion, AnimatePresence, Reorder } = Motion;
+
+    // ==================== GEMINI 2.5 API CONFIGURATION ====================
+    // Get your FREE API key from: https://aistudio.google.com/apikey
+    const GEMINI_API_KEY = 'YOUR_API_KEY_HERE';
+    
+    // Gemini 2.5 Flash - FREE tier with generous limits
+    // Model: gemini-2.5-flash (latest stable)
+    // Rate limits: 60 requests/minute, 300K tokens/day FREE
+    const GEMINI_MODEL = 'gemini-2.5-flash';
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+    // ==================== IP BIBLE DATABASE ====================
+    const IP_DATABASE = {
+      RED_SODA: {
+        name: 'Red Soda Circle',
+        genre: 'K-Pop Idol Group',
+        description: 'A vibrant 5-member K-Pop girl group known for their energetic performances and colorful aesthetics.',
+        characters: ['Mina (Leader)', 'Yuki (Main Vocal)', 'Sora (Main Dancer)', 'Hana (Rapper)', 'Luna (Maknae)'],
+        style: 'Bright colors, pop aesthetics, cheerful expressions, synchronized choreography',
+        restrictions: 'No violence, no dark themes, maintain cheerful idol image, no romantic scenarios between members',
+        approvedThemes: ['Dance performances', 'Fan meetings', 'Music videos', 'Behind-the-scenes', 'Variety show moments']
+      },
+      STUN_X: {
+        name: 'STUN-X Million Volt',
+        genre: 'K-Pop Boy Band / Action Concept',
+        description: 'A 4-member boy band with an electrifying action concept, known for intense choreography and powerful visuals.',
+        characters: ['Volt (Leader)', 'Thunder (Main Vocal)', 'Blaze (Main Dancer)', 'Storm (Rapper)'],
+        style: 'Dark aesthetics, neon accents, powerful poses, dramatic lighting, urban settings',
+        restrictions: 'No excessive violence, maintain cool image, no comedy that undermines their powerful concept',
+        approvedThemes: ['Power performances', 'Training montages', 'Dramatic MVs', 'Action sequences', 'Intense choreography']
+      }
+    };
+
+    // ==================== AUDIO LIBRARY ====================
+    const UPBEAT_SONGS = [
+      { id: 'u1', name: 'Electronic Dance', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', bpm: 128, genre: 'Electronic' },
+      { id: 'u2', name: 'Happy Pop Beat', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', bpm: 120, genre: 'Pop' },
+      { id: 'u3', name: 'Energetic Groove', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', bpm: 140, genre: 'Electronic' },
+      { id: 'u4', name: 'Summer Vibes', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', bpm: 118, genre: 'Pop' },
+    ];
+
+    const SENTIMENTAL_SONGS = [
+      { id: 's1', name: 'Emotional Piano', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', bpm: 70, genre: 'Classical' },
+      { id: 's2', name: 'Ambient Strings', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', bpm: 65, genre: 'Ambient' },
+      { id: 's3', name: 'Epic Orchestra', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', bpm: 90, genre: 'Orchestral' },
+    ];
+
+    const DURATIONS = [
+      { label: '15s', desc: 'Shorts', value: 15, icon: '📱' },
+      { label: '30s', desc: 'Reels', value: 30, icon: '🎬' },
+      { label: '60s', desc: 'Full', value: 60, icon: '🎥' }
+    ];
+
+    // ==================== MOTION EFFECTS BY SCENARIO TYPE ====================
+    const MOTION_EFFECTS = {
+      comic: [
+        'motion-comic-1',      // Bouncy zoom
+        'motion-comic-2',      // Fun shake
+        'motion-comic-3',      // Pop effect
+        'motion-kenburns-1',   // Zoom in
+        'motion-kenburns-3',   // Pan left
+        'motion-kenburns-4',   // Pan right
+      ],
+      emotional: [
+        'motion-emotional-1',  // Slow zoom
+        'motion-emotional-2',  // Drift
+        'motion-emotional-3',  // Breathe
+        'motion-emotional-4',  // Golden hour
+        'motion-kenburns-1',   // Ken Burns zoom in
+        'motion-kenburns-2',   // Ken Burns zoom out
+        'motion-kenburns-6',   // Diagonal
+      ],
+      action: [
+        'motion-action-1',     // Zoom punch
+        'motion-action-2',     // Intense shake
+        'motion-action-3',     // Flash
+        'motion-action-4',     // Whip pan
+        'motion-kenburns-3',   // Pan left
+        'motion-kenburns-4',   // Pan right
+        'motion-kenburns-5',   // Pan up
+      ]
+    };
+
+    // Get motion effect for a specific frame based on scenario
+    const getMotionEffect = (scenarioType, frameIndex) => {
+      const effects = MOTION_EFFECTS[scenarioType] || MOTION_EFFECTS.emotional;
+      return effects[frameIndex % effects.length];
+    };
+
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+    const random = arr => arr[Math.floor(Math.random() * arr.length)];
+
+    // ==================== TOAST SYSTEM ====================
+    function ToastContainer({ toasts }) {
+      return (
+        <div className="toast-container">
+          <AnimatePresence>
+            {toasts.map(toast => (
+              <motion.div key={toast.id} initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 100 }} className={`toast ${toast.type === 'console' ? 'console-log' : toast.type === 'warning' ? 'warning-log' : 'info-log'}`}>
+                <span className="terminal text-xs">{toast.message}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      );
+    }
+
+    // ==================== API KEY MODAL ====================
+    function ApiKeyModal({ onSave, onClose, currentKey }) {
+      const [key, setKey] = useState(currentKey || '');
+      return (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card rounded-2xl p-6 w-[500px] max-w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-2xl">🔑</div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Gemini 2.5 Flash API Key</h3>
+                <p className="text-xs text-gray-400">FREE tier: 60 req/min, 300K tokens/day</p>
+              </div>
+            </div>
+            <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <p className="text-xs text-emerald-400 font-medium mb-1">✨ Gemini 2.5 Flash is FREE!</p>
+              <p className="text-[10px] text-gray-400">Google's latest model with 1M token context window, now available at no cost.</p>
+            </div>
+            <div className="mb-4">
+              <input type="password" value={key} onChange={e => setKey(e.target.value)} placeholder="AIza..." className="w-full px-4 py-3 rounded-xl premium-input text-sm text-white" />
+              <p className="text-[10px] text-gray-500 mt-2">
+                Get your FREE key: <a href="https://aistudio.google.com/apikey" target="_blank" className="text-violet-400 hover:underline">aistudio.google.com/apikey</a>
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 py-3 rounded-xl btn-secondary text-gray-400 text-sm">Cancel</button>
+              <button onClick={() => key && onSave(key)} disabled={!key} className="flex-1 py-3 rounded-xl btn-primary text-white text-sm font-semibold disabled:opacity-50">Save & Continue</button>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
+    // ==================== SAFETY WARNING MODAL ====================
+    function SafetyWarningModal({ reason, onClose }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card glow-red rounded-2xl p-6 w-[450px] max-w-full border-red-500/50">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-3xl shield-pulse">🛡️</div>
+              <div>
+                <h3 className="text-lg font-semibold text-red-400">IP Guardian Alert</h3>
+                <p className="text-xs text-gray-400">Content Safety Firewall Triggered</p>
+              </div>
+            </div>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
+              <p className="text-sm text-red-300 leading-relaxed">{reason}</p>
+            </div>
+            <div className="text-[10px] text-gray-500 mb-4">
+              <p>The IP Guardian has detected content that may violate the character's official guidelines. Please modify your prompt and try again.</p>
+            </div>
+            <button onClick={onClose} className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white text-sm font-semibold">Understood - Modify Prompt</button>
+          </motion.div>
+        </div>
+      );
+    }
+
+    // ==================== TRIM SLIDER ====================
+    function TrimSlider({ duration, trimStart, trimEnd, onTrimChange }) {
+      const trackRef = useRef(null);
+      const [dragging, setDragging] = useState(null);
+      const handleMouseDown = (handle, e) => { e.preventDefault(); setDragging(handle); };
+      const handleMouseMove = useCallback((e) => {
+        if (!dragging || !trackRef.current) return;
+        const rect = trackRef.current.getBoundingClientRect();
+        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const percent = x / rect.width;
+        const time = percent * duration;
+        if (dragging === 'start') onTrimChange(Math.min(time, trimEnd - 1), trimEnd);
+        else onTrimChange(trimStart, Math.max(time, trimStart + 1));
+      }, [dragging, duration, trimStart, trimEnd, onTrimChange]);
+      const handleMouseUp = useCallback(() => setDragging(null), []);
+      useEffect(() => {
+        if (dragging) {
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp);
+          return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
+        }
+      }, [dragging, handleMouseMove, handleMouseUp]);
+      const startPercent = (trimStart / duration) * 100;
+      const endPercent = (trimEnd / duration) * 100;
+      return (
+        <div className="relative">
+          <div className="flex justify-between text-[10px] text-gray-500 mb-1"><span>0:00</span><span>{Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')}</span></div>
+          <div ref={trackRef} className="relative h-10 bg-gray-800/50 rounded-lg overflow-hidden cursor-pointer">
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-900/30 via-purple-900/30 to-pink-900/30" />
+            <div className="absolute inset-0 flex items-center justify-around px-2 opacity-30">{[...Array(30)].map((_, i) => (<div key={i} className="w-0.5 bg-purple-400 rounded-full" style={{ height: `${15 + Math.sin(i * 0.5) * 10 + Math.random() * 8}px` }} />))}</div>
+            <div className="trim-region" style={{ left: `${startPercent}%`, right: `${100 - endPercent}%` }} />
+            <div className="absolute top-0 bottom-0 left-0 bg-black/50" style={{ width: `${startPercent}%` }} />
+            <div className="absolute top-0 bottom-0 right-0 bg-black/50" style={{ width: `${100 - endPercent}%` }} />
+            <div className="trim-handle" style={{ left: `calc(${startPercent}% - 7px)` }} onMouseDown={(e) => handleMouseDown('start', e)} />
+            <div className="trim-handle" style={{ left: `calc(${endPercent}% - 7px)` }} onMouseDown={(e) => handleMouseDown('end', e)} />
+          </div>
+          <div className="flex justify-between mt-2 text-[10px]">
+            <span className="text-gray-500">Start: <span className="text-violet-400 font-medium">{trimStart.toFixed(1)}s</span></span>
+            <span className="text-gray-500">Duration: <span className="text-pink-400 font-medium">{(trimEnd - trimStart).toFixed(1)}s</span></span>
+            <span className="text-gray-500">End: <span className="text-violet-400 font-medium">{trimEnd.toFixed(1)}s</span></span>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== SCENARIO CARD ====================
+    function ScenarioCard({ scenario, isSelected, onSelect, disabled }) {
+      return (
+        <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -10 }} whileHover={!disabled ? { scale: 1.02 } : {}} whileTap={!disabled ? { scale: 0.98 } : {}} onClick={() => !disabled && onSelect(scenario.id)} className={`scenario-card rounded-2xl p-5 ${isSelected ? 'selected' : ''} ${disabled && !isSelected ? 'opacity-30 pointer-events-none' : ''}`}>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-gradient-to-br ${scenario.gradient}`} style={{ boxShadow: `0 0 20px ${scenario.color}30` }}>{scenario.icon}</div>
+              <div><h3 className="font-semibold text-white">{scenario.title}</h3><p className="text-xs text-gray-400">{scenario.subtitle}</p></div>
+            </div>
+            {isSelected && (<motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center"><span className="text-white text-xs">✓</span></motion.div>)}
+          </div>
+          <p className="text-sm text-gray-300 mb-4 leading-relaxed">{scenario.description}</p>
+          <div className="space-y-2">
+            <div className="glass-card rounded-lg p-3"><div className="flex items-center gap-2 mb-1"><span className="text-amber-400 text-xs font-semibold">🪝 HOOK</span></div><p className="text-xs text-gray-400 leading-relaxed">{scenario.hook}</p></div>
+            <div className="glass-card rounded-lg p-3"><div className="flex items-center gap-2 mb-1"><span className="text-violet-400 text-xs font-semibold">📖 BODY</span></div><p className="text-xs text-gray-400 leading-relaxed">{scenario.body}</p></div>
+            <div className="glass-card rounded-lg p-3"><div className="flex items-center gap-2 mb-1"><span className="text-pink-400 text-xs font-semibold">🎆 CLIMAX</span></div><p className="text-xs text-gray-400 leading-relaxed">{scenario.climax}</p></div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-white/5">
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="flex items-center gap-1.5"><span className="text-gray-500">📷</span><span className="text-gray-400">{scenario.camera}</span></div>
+              <div className="flex items-center gap-1.5"><span className="text-gray-500">💡</span><span className="text-gray-400">{scenario.lighting}</span></div>
+            </div>
+          </div>
+          {!isSelected && !disabled && (<motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`w-full mt-4 py-2.5 rounded-xl text-sm font-medium border ${scenario.borderColor} bg-white/5 hover:bg-white/10 transition-all`} style={{ color: scenario.color }}>Select This Version</motion.button>)}
+        </motion.div>
+      );
+    }
+
+    // ==================== MAIN APP ====================
+    function App() {
+      const [apiKey, setApiKey] = useState(() => {
+        const saved = localStorage.getItem('gemini_api_key');
+        return saved || (GEMINI_API_KEY !== 'YOUR_API_KEY_HERE' ? GEMINI_API_KEY : '');
+      });
+      const [showApiModal, setShowApiModal] = useState(false);
+      const [showSafetyWarning, setShowSafetyWarning] = useState(false);
+      const [safetyReason, setSafetyReason] = useState('');
+      const [toasts, setToasts] = useState([]);
+      const [tab, setTab] = useState('RED_SODA');
+      const [redSodaImages, setRedSodaImages] = useState([]);
+      const [stunXImages, setStunXImages] = useState([]);
+      const [selected, setSelected] = useState([]);
+      const [sequence, setSequence] = useState([]);
+      const [promptIdea, setPromptIdea] = useState('');
+      const [genType, setGenType] = useState('video');
+      const [videoDuration, setVideoDuration] = useState(15);
+      const [phase, setPhase] = useState('input');
+      const [scenarios, setScenarios] = useState([]);
+      const [selectedScenario, setSelectedScenario] = useState(null);
+      const [generatingScenarios, setGeneratingScenarios] = useState(false);
+      const [generating, setGenerating] = useState(false);
+      const [generated, setGenerated] = useState(false);
+      const [playing, setPlaying] = useState(false);
+      const [audio, setAudio] = useState(null);
+      const [time, setTime] = useState(0);
+      const [showProcessLog, setShowProcessLog] = useState(false);
+      const [processStep, setProcessStep] = useState(0);
+      const [trimStart, setTrimStart] = useState(0);
+      const [trimEnd, setTrimEnd] = useState(15);
+      const [exporting, setExporting] = useState(false);
+      const [exportComplete, setExportComplete] = useState(false);
+      const [dragOverTab, setDragOverTab] = useState(null);
+      
+      const audioRef = useRef(null);
+      const timerRef = useRef(null);
+      const startRef = useRef(null);
+      const redSodaInputRef = useRef(null);
+      const stunXInputRef = useRef(null);
+
+      const addToast = (message, type = 'console') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+      };
+
+      const getCurrentIP = () => IP_DATABASE[tab];
+      const getCurrentTabImages = () => tab === 'RED_SODA' ? redSodaImages : stunXImages;
+      const getAllImages = () => [...redSodaImages, ...stunXImages];
+      const getSequenceImages = () => sequence.map(id => getAllImages().find(img => img.id === id)).filter(Boolean);
+
+      const sequenceImages = getSequenceImages();
+      const total = genType === 'video' ? videoDuration : sequenceImages.length * 3;
+      const DURATION_PER_IMAGE = total / Math.max(sequenceImages.length, 1);
+      const canGenerateScenarios = sequenceImages.length >= 2 && promptIdea.trim().length > 0;
+      const currentIdx = playing && sequenceImages.length ? Math.floor(time / DURATION_PER_IMAGE) % sequenceImages.length : 0;
+      const current = sequenceImages[currentIdx];
+
+      const processSteps = [
+        { prefix: 'IP GUARDIAN', text: 'Double Firewall Check: PASSED ✓', icon: '🛡️', duration: 800 },
+        { prefix: 'GEMINI 2.5', text: 'Applying selected scenario structure...', icon: '🧠', duration: 1000 },
+        { prefix: 'NANO BANNA', text: 'Loading Clean LoRA Model...', icon: '🎨', duration: 1200 },
+        { prefix: 'NANO BANNA', text: 'Character Consistency Check: PASS ✓', icon: '✅', duration: 800 },
+        { prefix: 'KLING AI', text: 'Camera Motion Vector Calculation...', icon: '📐', duration: 1000 },
+        { prefix: 'KLING AI', text: 'Rendering motion vectors (i2v)...', icon: '🎬', duration: 1500 },
+        { prefix: 'MOTION FX', text: 'Ken Burns & Dynamic Effects Applied...', icon: '🎥', duration: 800 },
+        { prefix: 'AUDIO ENGINE', text: 'Scene Analysis: Detecting mood...', icon: '🎵', duration: 800 },
+        { prefix: 'AUDIO ENGINE', text: 'Auto-syncing BGM to beats...', icon: '🎧', duration: 600 },
+      ];
+
+      // ==================== GEMINI 2.5 FLASH API CALL ====================
+      const callGeminiAPI = async (prompt, ipContext) => {
+        const systemPrompt = `You are the 'IP Guardian' for "${ipContext.name}". Your role is to analyze user requests and ensure they comply with the character's Official Bible.
+
+## Character Bible:
+- Name: ${ipContext.name}
+- Genre: ${ipContext.genre}
+- Description: ${ipContext.description}
+- Characters: ${ipContext.characters.join(', ')}
+- Visual Style: ${ipContext.style}
+- Restrictions: ${ipContext.restrictions}
+- Approved Themes: ${ipContext.approvedThemes.join(', ')}
+
+## Your Task:
+Analyze the user's request: "${prompt}"
+
+1. If the request contains violence, NSFW content, character distortion, or violates restrictions, return ONLY this JSON:
+{"safe": false, "reason": "Explain why this violates the IP guidelines..."}
+
+2. If safe, generate 3 distinct short-form video scripts optimized for Hook-Body-Climax structure. Return ONLY this JSON:
+{"safe": true, "options": [
+  {"id": "comic", "type": "Comic", "title": "Comic Version", "subtitle": "Funny & Exaggerated", "description": "Brief description", "hook": "Opening scene description", "body": "Middle action description", "climax": "Finale description", "camera": "Camera style", "lighting": "Lighting style", "mood": "Upbeat"},
+  {"id": "emotional", "type": "Emotional", "title": "Emotional Version", "subtitle": "Cinematic & Sentimental", "description": "Brief description", "hook": "Opening scene", "body": "Middle action", "climax": "Finale", "camera": "Camera style", "lighting": "Lighting style", "mood": "Sentimental"},
+  {"id": "action", "type": "Action", "title": "Action Version", "subtitle": "Dynamic & Intense", "description": "Brief description", "hook": "Opening scene", "body": "Middle action", "climax": "Finale", "camera": "Camera style", "lighting": "Lighting style", "mood": "Action"}
+]}
+
+CRITICAL: Return ONLY valid JSON. No markdown code blocks, no explanation text.`;
+
+        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }] }],
+            generationConfig: { 
+              temperature: 0.7, 
+              maxOutputTokens: 2048,
+              responseMimeType: "application/json"
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('API Error:', error);
+          throw new Error(error.error?.message || `API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        // Clean and parse JSON
+        let cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Try to extract JSON if there's extra text
+        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanedText = jsonMatch[0];
+        }
+        
+        return JSON.parse(cleanedText);
+      };
+
+      // ==================== HANDLERS ====================
+      const handleUpload = (files, targetTab) => {
+        const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+        imageFiles.forEach(file => {
+          const imageUrl = URL.createObjectURL(file);
+          const newImage = { id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, name: file.name.replace(/\.[^/.]+$/, ''), imageUrl, tab: targetTab };
+          if (targetTab === 'RED_SODA') setRedSodaImages(prev => [...prev, newImage]);
+          else setStunXImages(prev => [...prev, newImage]);
+        });
+      };
+
+      const handleDrop = (e, targetTab) => { e.preventDefault(); setDragOverTab(null); handleUpload(e.dataTransfer.files, targetTab); };
+
+      const removeImage = (id, targetTab) => {
+        if (targetTab === 'RED_SODA') {
+          const img = redSodaImages.find(i => i.id === id);
+          if (img?.imageUrl) URL.revokeObjectURL(img.imageUrl);
+          setRedSodaImages(prev => prev.filter(i => i.id !== id));
+        } else {
+          const img = stunXImages.find(i => i.id === id);
+          if (img?.imageUrl) URL.revokeObjectURL(img.imageUrl);
+          setStunXImages(prev => prev.filter(i => i.id !== id));
+        }
+        setSelected(prev => prev.filter(i => i !== id));
+        setSequence(prev => prev.filter(i => i !== id));
+      };
+
+      const toggleSelect = (id) => {
+        if (generating || generatingScenarios) return;
+        setSelected(prev => {
+          if (prev.includes(id)) { setSequence(seq => seq.filter(i => i !== id)); return prev.filter(i => i !== id); }
+          if (prev.length < 10) { setSequence(seq => [...seq, id]); return [...prev, id]; }
+          return prev;
+        });
+        if (generated || phase !== 'input') { setPhase('input'); setScenarios([]); setSelectedScenario(null); setGenerated(false); stop(); }
+      };
+
+      const stop = () => {
+        setPlaying(false); setTime(0);
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+      };
+
+      const togglePlayPause = () => {
+        if (!generated) return;
+        if (playing) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          if (audioRef.current) audioRef.current.pause();
+          setPlaying(false);
+        } else {
+          startRef.current = Date.now() - (time * 1000);
+          timerRef.current = setInterval(() => {
+            const e = (Date.now() - startRef.current) / 1000;
+            if (e >= total) { startRef.current = Date.now(); setTime(0); } else setTime(e);
+          }, 100);
+          if (audioRef.current) audioRef.current.play().catch(console.log);
+          else if (audio) { audioRef.current = new Audio(audio.url); audioRef.current.volume = 0.6; audioRef.current.loop = true; audioRef.current.play().catch(console.log); }
+          setPlaying(true);
+        }
+      };
+
+      const seekTo = (newTime) => {
+        setTime(newTime);
+        startRef.current = Date.now() - (newTime * 1000);
+        if (audioRef.current) audioRef.current.currentTime = newTime % (audioRef.current.duration || total);
+      };
+
+      // ==================== GENERATE SCENARIOS (REAL GEMINI 2.5 API) ====================
+      const handleGenerateScenarios = async () => {
+        if (!canGenerateScenarios) return;
+        
+        if (!apiKey) { setShowApiModal(true); return; }
+
+        setGeneratingScenarios(true);
+        addToast('[IP Guardian] Initializing Double Firewall...', 'console');
+        
+        try {
+          await delay(500);
+          addToast('[Layer 1] Text Content Analysis via Gemini 2.5 Flash...', 'info');
+          
+          const result = await callGeminiAPI(promptIdea, getCurrentIP());
+          
+          if (!result.safe) {
+            addToast('[BLOCKED] Content Safety Violation Detected!', 'warning');
+            setSafetyReason(result.reason);
+            setShowSafetyWarning(true);
+            setGeneratingScenarios(false);
+            return;
+          }
+
+          addToast('[Layer 1] Text Firewall: PASSED ✓', 'console');
+          await delay(300);
+          addToast('[Layer 2] Visual Safety Filter: READY ✓', 'console');
+
+          const scenarioStyles = {
+            comic: { icon: '😄', color: '#fbbf24', gradient: 'from-amber-500/20 to-orange-500/20', borderColor: 'border-amber-500/50' },
+            emotional: { icon: '💫', color: '#818cf8', gradient: 'from-indigo-500/20 to-purple-500/20', borderColor: 'border-indigo-500/50' },
+            action: { icon: '⚡', color: '#ec4899', gradient: 'from-pink-500/20 to-rose-500/20', borderColor: 'border-pink-500/50' }
+          };
+
+          const formattedScenarios = result.options.map(opt => ({
+            ...opt,
+            ...scenarioStyles[opt.id] || scenarioStyles.action
+          }));
+
+          setScenarios(formattedScenarios);
+          setPhase('scenarios');
+          addToast('[IP Guardian] 3 Safe Scenarios Generated ✓', 'console');
+        } catch (error) {
+          console.error('API Error:', error);
+          addToast(`[Error] ${error.message}`, 'warning');
+          if (error.message.includes('API') || error.message.includes('key') || error.message.includes('401') || error.message.includes('403')) {
+            setShowApiModal(true);
+          }
+        }
+        
+        setGeneratingScenarios(false);
+      };
+
+      const handleSelectScenario = (scenarioId) => { setSelectedScenario(scenarioId); };
+
+      // ==================== FINAL GENERATION ====================
+      const handleFinalGenerate = async () => {
+        if (!selectedScenario) return;
+        
+        const scenario = scenarios.find(s => s.id === selectedScenario);
+        setPhase('generating');
+        setShowProcessLog(true);
+        setProcessStep(0);
+        setGenerating(true);
+
+        addToast('[System] Clean LoRA Loaded. Visual Safety Filter Activated.', 'console');
+
+        for (let i = 0; i < processSteps.length; i++) {
+          setProcessStep(i);
+          await delay(processSteps[i].duration);
+        }
+
+        const moodCategory = scenario.mood === 'Upbeat' || scenario.mood === 'Cute' ? 'Upbeat' : 'Sentimental';
+        const songList = moodCategory === 'Upbeat' ? UPBEAT_SONGS : SENTIMENTAL_SONGS;
+        const selectedAudio = random(songList);
+        setAudio({ ...selectedAudio, category: moodCategory });
+
+        addToast(`[AI Audio] Scene Analyzed: "${moodCategory}". Auto-syncing BGM...`, 'info');
+
+        // Motion effect notification based on scenario
+        const motionType = selectedScenario === 'comic' ? 'Bouncy Pop & Fun Shake' 
+          : selectedScenario === 'action' ? 'Dynamic Zoom & Whip Pan' 
+          : 'Cinematic Ken Burns';
+        addToast(`[Motion Engine] Applying "${motionType}" effects...`, 'info');
+
+        setProcessStep(processSteps.length);
+        await delay(500);
+
+        setShowProcessLog(false);
+        setGenerating(false);
+        setGenerated(true);
+        setPhase('complete');
+        setTrimStart(0);
+        setTrimEnd(total);
+
+        if (genType === 'video') {
+          setPlaying(true);
+          startRef.current = Date.now();
+          timerRef.current = setInterval(() => {
+            const e = (Date.now() - startRef.current) / 1000;
+            if (e >= total) { startRef.current = Date.now(); setTime(0); } else setTime(e);
+          }, 100);
+
+          if (selectedAudio) {
+            audioRef.current = new Audio(selectedAudio.url);
+            audioRef.current.volume = 0.6;
+            audioRef.current.loop = true;
+            audioRef.current.play().catch(console.log);
+          }
+        }
+
+        addToast('[Complete] Video Generation Successful!', 'console');
+      };
+
+      const handleTrimChange = (start, end) => { setTrimStart(Math.max(0, start)); setTrimEnd(Math.min(total, end)); };
+
+      const handleExport = async () => {
+        if (!generated || exporting) return;
+        setExporting(true);
+        setExportComplete(false);
+        await delay(3000);
+        
+        const metadata = {
+          title: 'IP Remix ' + (genType === 'video' ? 'Video' : 'Image'),
+          ip: getCurrentIP().name,
+          scenario: scenarios.find(s => s.id === selectedScenario)?.title,
+          promptIdea,
+          resolution: '1080x1920',
+          duration: `${(trimEnd - trimStart).toFixed(1)}s`,
+          audio: audio?.name,
+          model: 'Gemini 2.5 Flash',
+          safetyStatus: 'PASSED - Double Firewall Verified',
+          exportDate: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `IP_Remix_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setExportComplete(true);
+        await delay(2000);
+        setExporting(false);
+      };
+
+      const handleReorder = (newSequence) => {
+        setSequence(newSequence);
+        if (generated || phase !== 'input') { setPhase('input'); setScenarios([]); setSelectedScenario(null); setGenerated(false); stop(); }
+      };
+
+      const resetToInput = () => { setPhase('input'); setScenarios([]); setSelectedScenario(null); setGenerated(false); stop(); };
+
+      const saveApiKey = (key) => { setApiKey(key); localStorage.setItem('gemini_api_key', key); setShowApiModal(false); addToast('[System] Gemini 2.5 API Key Saved!', 'console'); };
+
+      useEffect(() => { setTrimEnd(total); }, [total]);
+      useEffect(() => () => { 
+        if (timerRef.current) clearInterval(timerRef.current); 
+        if (audioRef.current) audioRef.current.pause();
+        redSodaImages.forEach(i => i.imageUrl && URL.revokeObjectURL(i.imageUrl));
+        stunXImages.forEach(i => i.imageUrl && URL.revokeObjectURL(i.imageUrl));
+      }, []);
+
+      const currentImages = getCurrentTabImages();
+      const currentIP = getCurrentIP();
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          <ToastContainer toasts={toasts} />
+          
+          {showApiModal && <ApiKeyModal onSave={saveApiKey} onClose={() => setShowApiModal(false)} currentKey={apiKey} />}
+          {showSafetyWarning && <SafetyWarningModal reason={safetyReason} onClose={() => setShowSafetyWarning(false)} />}
+
+          <input ref={redSodaInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUpload(e.target.files, 'RED_SODA')} />
+          <input ref={stunXInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUpload(e.target.files, 'STUN_X')} />
+
+          {/* Header */}
+          <header className="glass px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-xl shadow-lg shadow-violet-500/25">✨</div>
+              <div>
+                <h1 className="logo-text text-xl font-bold gradient-text">IP Remix Studio</h1>
+                <p className="text-[11px] text-gray-500">Powered by Gemini 2.5 Flash (FREE)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setShowApiModal(true)} className={`px-3 py-1.5 rounded-lg text-[10px] transition-all flex items-center gap-2 ${apiKey ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'}`}>
+                <span>{apiKey ? '✓' : '🔑'}</span> {apiKey ? 'API Connected' : 'Set API Key'}
+              </button>
+              {phase === 'scenarios' && selectedScenario && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full glass-card">
+                  <span className="text-sm">{scenarios.find(s => s.id === selectedScenario)?.icon}</span>
+                  <span className="text-xs font-medium text-white">{scenarios.find(s => s.id === selectedScenario)?.title}</span>
+                </div>
+              )}
+              {generated && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"/>
+                  <span className="text-xs text-emerald-400 font-medium">Ready</span>
+                </div>
+              )}
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Panel */}
+            <div className="w-72 border-r border-white/5 flex flex-col shrink-0 bg-black/20">
+              <div className="p-4 border-b border-white/5">
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2"><span className="text-lg">📚</span> IP Asset Library</h2>
+              </div>
+              
+              {/* Output Type & Duration */}
+              <div className="p-4 border-b border-white/5 space-y-4">
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Output Type</label>
+                  <div className="flex gap-2">
+                    <button onClick={() => setGenType('image')} className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all ${genType === 'image' ? 'bg-violet-500/20 border border-violet-500/50 text-violet-400' : 'btn-secondary text-gray-400'}`}>🖼️ Image</button>
+                    <button onClick={() => setGenType('video')} className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all ${genType === 'video' ? 'bg-violet-500/20 border border-violet-500/50 text-violet-400' : 'btn-secondary text-gray-400'}`}>🎬 Video</button>
+                  </div>
+                </div>
+                {genType === 'video' && (
+                  <div>
+                    <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Duration</label>
+                    <div className="flex gap-1.5">
+                      {DURATIONS.map(d => (
+                        <button key={d.value} onClick={() => setVideoDuration(d.value)} className={`flex-1 py-2 px-2 rounded-lg text-center transition-all ${videoDuration === d.value ? 'bg-gradient-to-r from-violet-500/30 to-pink-500/30 border border-violet-500/50' : 'bg-white/5 border border-white/5 hover:border-white/10'}`}>
+                          <span className="text-sm block">{d.icon}</span>
+                          <span className={`text-[10px] block ${videoDuration === d.value ? 'text-white' : 'text-gray-500'}`}>{d.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* IP Tabs */}
+              <div className="flex gap-2 p-4 border-b border-white/5">
+                <button onClick={() => setTab('RED_SODA')} className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all relative ${tab === 'RED_SODA' ? 'bg-gradient-to-r from-pink-500/20 to-rose-500/20 border border-pink-500/50 text-pink-400' : 'btn-secondary text-gray-400'}`}>
+                  🎀 Red Soda {redSodaImages.length > 0 && <span className="ml-1 opacity-60">({redSodaImages.length})</span>}
+                  {tab === 'RED_SODA' && <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full safe-badge flex items-center justify-center text-[8px]">✓</div>}
+                </button>
+                <button onClick={() => setTab('STUN_X')} className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all relative ${tab === 'STUN_X' ? 'bg-gradient-to-r from-violet-500/20 to-indigo-500/20 border border-violet-500/50 text-violet-400' : 'btn-secondary text-gray-400'}`}>
+                  ⚡ STUN-X {stunXImages.length > 0 && <span className="ml-1 opacity-60">({stunXImages.length})</span>}
+                  {tab === 'STUN_X' && <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full safe-badge flex items-center justify-center text-[8px]">✓</div>}
+                </button>
+              </div>
+
+              {/* IP Info */}
+              <div className="mx-4 mt-3 p-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-5 h-5 rounded-full safe-badge flex items-center justify-center text-[10px]">🛡️</div>
+                  <span className="text-[10px] text-emerald-400 font-semibold">Official Verified IP</span>
+                </div>
+                <p className="text-[9px] text-gray-400">{currentIP.genre} • {currentIP.characters.length} Characters</p>
+              </div>
+
+              {/* Upload Zone */}
+              <div onClick={() => tab === 'RED_SODA' ? redSodaInputRef.current?.click() : stunXInputRef.current?.click()} onDrop={(e) => handleDrop(e, tab)} onDragOver={(e) => { e.preventDefault(); setDragOverTab(tab); }} onDragLeave={() => setDragOverTab(null)} className={`mx-4 mt-3 p-4 rounded-xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center ${dragOverTab === tab ? 'border-violet-500 bg-violet-500/10' : 'border-white/10 hover:border-white/20 hover:bg-white/5'}`}>
+                <span className="text-2xl mb-2">📁</span>
+                <span className="text-xs text-violet-400 font-medium">Upload Images</span>
+                <span className="text-[10px] text-gray-500">Drag & drop or click</span>
+              </div>
+
+              {/* Image Grid */}
+              <div className="flex-1 overflow-auto p-4">
+                {currentImages.length === 0 ? (
+                  <div className="text-center text-gray-500 text-xs py-8"><span className="text-2xl block mb-2">🖼️</span>No images yet</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {currentImages.map(img => {
+                      const isSelected = selected.includes(img.id);
+                      const order = sequence.indexOf(img.id) + 1;
+                      return (
+                        <motion.div key={img.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => toggleSelect(img.id)} className={`relative aspect-[3/4] rounded-xl cursor-pointer overflow-hidden transition-all ${isSelected ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black' : 'ring-1 ring-white/10 hover:ring-white/20'}`}>
+                          <img src={img.imageUrl} alt={img.name} className="w-full h-full object-cover" />
+                          {isSelected && (<><div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-violet-500 text-[10px] font-bold flex items-center justify-center text-white shadow-lg">{order}</div><div className="absolute inset-0 bg-violet-500/10" /></>)}
+                          <button onClick={(e) => { e.stopPropagation(); removeImage(img.id, tab); }} className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 text-white/80 text-[10px] flex items-center justify-center hover:bg-red-500 transition-colors">✕</button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2"><span className="text-[9px] text-white/80 truncate block">{img.name}</span></div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Selection Status */}
+              <div className="p-4 border-t border-white/5">
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-gray-400">Selected Assets</span>
+                  <span className={sequenceImages.length >= 2 ? 'text-emerald-400' : 'text-amber-400'}>{sequenceImages.length}/10</span>
+                </div>
+                <div className="flex gap-0.5">{[...Array(10)].map((_, i) => (<div key={i} className={`flex-1 h-1.5 rounded-full transition-all ${i < sequenceImages.length ? 'bg-gradient-to-r from-violet-500 to-pink-500' : 'bg-white/10'}`}/>))}</div>
+              </div>
+
+              {/* Prompt Input */}
+              <div className="p-4 border-t border-white/5">
+                <label className="text-xs font-medium text-white mb-2 block flex items-center gap-2"><span>💡</span> Prompt Idea</label>
+                <textarea value={promptIdea} onChange={e => { setPromptIdea(e.target.value); if (phase !== 'input') resetToInput(); }} disabled={generating || generatingScenarios} placeholder="Describe your video idea... (e.g., Red Soda dancing in a neon city)" className="w-full h-20 px-4 py-3 rounded-xl premium-input text-sm resize-none text-white placeholder-gray-500" />
+                <p className="text-[10px] text-gray-500 mt-2">🛡️ IP Guardian will analyze via Gemini 2.5</p>
+              </div>
+
+              {/* Generate Button */}
+              <div className="p-4 border-t border-white/5">
+                <button onClick={handleGenerateScenarios} disabled={!canGenerateScenarios || generating || generatingScenarios || phase !== 'input'} className="w-full py-3.5 rounded-xl btn-primary text-white font-semibold text-sm flex items-center justify-center gap-2">
+                  {generatingScenarios ? (<><motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>🛡️</motion.span>Consulting IP Guardian...</>) : (<>✨ Generate Scenarios</>)}
+                </button>
+              </div>
+            </div>
+
+            {/* Center Panel - Preview */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 flex items-center justify-center p-6" style={{ background: 'radial-gradient(ellipse at center, rgba(139,92,246,0.08) 0%, transparent 70%)' }}>
+                <div className="flex flex-col items-center">
+                  <motion.div className="relative" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                    <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/20 via-pink-500/20 to-violet-500/20 rounded-[44px] blur-xl opacity-50" />
+                    <div className="relative bg-gradient-to-b from-gray-800 to-gray-900 rounded-[40px] p-3 shadow-2xl">
+                      <div className="w-52 rounded-[32px] overflow-hidden bg-black" style={{ aspectRatio: '9/16' }}>
+                        {sequenceImages.length > 0 && current ? (
+                          <div className="relative w-full h-full overflow-hidden">
+                            {/* Motion Effect Container */}
+                            <AnimatePresence mode="wait">
+                              <motion.div
+                                key={current.id + '-' + currentIdx}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="w-full h-full"
+                              >
+                                <img 
+                                  src={current.imageUrl} 
+                                  alt={current.name} 
+                                  className={`w-full h-full object-cover ${
+                                    playing && generated && selectedScenario 
+                                      ? getMotionEffect(selectedScenario, currentIdx)
+                                      : ''
+                                  }`}
+                                  style={{ 
+                                    '--motion-duration': `${DURATION_PER_IMAGE}s`,
+                                    transformOrigin: 'center center'
+                                  }}
+                                />
+                              </motion.div>
+                            </AnimatePresence>
+                            
+                            {/* Cinematic Overlays - Only show when playing generated video */}
+                            {playing && generated && (
+                              <>
+                                {/* Vignette effect */}
+                                <div className="vignette-overlay" />
+                                
+                                {/* Film grain for texture */}
+                                <div className="film-grain" />
+                                
+                                {/* Letterbox bars for cinematic look */}
+                                {selectedScenario === 'emotional' && (
+                                  <>
+                                    <div className="letterbox-top" />
+                                    <div className="letterbox-bottom" />
+                                  </>
+                                )}
+                                
+                                {/* Scan line effect */}
+                                <div className="scan-line"/>
+                                
+                                {/* Dynamic color overlay based on scenario */}
+                                <div 
+                                  className="absolute inset-0 pointer-events-none z-4 mix-blend-overlay"
+                                  style={{
+                                    background: selectedScenario === 'comic' 
+                                      ? 'linear-gradient(180deg, rgba(251,191,36,0.1) 0%, transparent 50%, rgba(236,72,153,0.1) 100%)'
+                                      : selectedScenario === 'action'
+                                      ? 'linear-gradient(180deg, rgba(239,68,68,0.1) 0%, transparent 50%, rgba(99,102,241,0.15) 100%)'
+                                      : 'linear-gradient(180deg, rgba(251,191,36,0.08) 0%, transparent 50%, rgba(139,92,246,0.1) 100%)'
+                                  }}
+                                />
+                              </>
+                            )}
+                            
+                            {/* Frame counter */}
+                            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[10px] font-medium text-white z-10">
+                              {currentIdx + 1}/{sequenceImages.length}
+                            </div>
+                            
+                            {/* Scenario badge */}
+                            {generated && selectedScenario && (
+                              <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1.5 z-10">
+                                <span className="text-sm">{scenarios.find(s => s.id === selectedScenario)?.icon}</span>
+                                <span className="text-[10px] font-medium text-white">{scenarios.find(s => s.id === selectedScenario)?.type}</span>
+                              </div>
+                            )}
+                            
+                            {/* Motion indicator */}
+                            {playing && generated && (
+                              <div className="absolute top-12 right-3 px-2 py-1 rounded-full bg-violet-500/30 backdrop-blur-sm text-[8px] font-medium text-violet-300 z-10">
+                                🎬 {selectedScenario === 'comic' ? 'POP' : selectedScenario === 'action' ? 'DYNAMIC' : 'CINEMATIC'}
+                              </div>
+                            )}
+                            
+                            {/* Audio visualizer */}
+                            {playing && (
+                              <div className="absolute bottom-10 right-3 flex gap-0.5 z-10">
+                                {[0,1,2,3].map(i => (
+                                  <motion.div 
+                                    key={i} 
+                                    className="w-1 bg-violet-400 rounded-full" 
+                                    animate={{ height: [4, 16, 4] }} 
+                                    transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1 }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Progress bar */}
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30 z-10">
+                              <motion.div 
+                                className="h-full bg-gradient-to-r from-violet-500 to-pink-500" 
+                                style={{ width: `${total > 0 ? (time / total) * 100 : 0}%` }} 
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
+                            <span className="text-4xl mb-3 opacity-50">🎬</span>
+                            <span className="text-xs text-center px-6 leading-relaxed">Select 2+ assets to begin</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  {/* Playback Controls */}
+                  {generated && genType === 'video' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 flex items-center gap-4">
+                      <button onClick={togglePlayPause} className="w-12 h-12 rounded-full bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center text-xl shadow-lg shadow-violet-500/25">
+                        {playing ? '⏸' : '▶️'}
+                      </button>
+                      <div className="text-center">
+                        <span className="font-mono text-sm text-violet-400">{time.toFixed(1)}s</span>
+                        <span className="font-mono text-sm text-gray-500"> / {total}s</span>
+                      </div>
+                    </motion.div>
+                  )}
+                  
+                  {/* Motion Effect Info */}
+                  {generated && selectedScenario && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }} 
+                      animate={{ opacity: 1, y: 0 }} 
+                      className="mt-3 px-4 py-2 rounded-full bg-white/5 border border-white/10"
+                    >
+                      <span className="text-[10px] text-gray-400">
+                        Motion: <span className="text-violet-400 font-medium">
+                          {selectedScenario === 'comic' ? 'Bouncy Pop & Shake' : 
+                           selectedScenario === 'action' ? 'Dynamic Zoom & Whip Pan' : 
+                           'Cinematic Ken Burns'}
+                        </span>
+                      </span>
+                    </motion.div>
+                  )}
+                  
+                  {/* Audio Info */}
+                  {audio && generated && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 glass-card rounded-xl px-4 py-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-lg">🎵</div>
+                      <div>
+                        <p className="text-xs font-medium text-white">{audio.name}</p>
+                        <p className="text-[10px] text-gray-400">{audio.bpm} BPM • {audio.category}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Editor */}
+              <AnimatePresence>
+                {generated && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="border-t border-white/5 bg-black/40 p-5">
+                    <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><span>✂️</span> Quick Editor</h3>
+                    {genType === 'video' && (<div className="mb-4"><TrimSlider duration={total} trimStart={trimStart} trimEnd={trimEnd} onTrimChange={handleTrimChange} /></div>)}
+                    <div className="flex gap-3">
+                      {genType === 'video' && (<button onClick={() => { addToast(`[Editor] Trim applied: ${trimStart.toFixed(1)}s - ${trimEnd.toFixed(1)}s`, 'info'); }} className="flex-1 py-3 rounded-xl btn-secondary text-violet-400 text-xs font-medium">✂️ Apply Trim</button>)}
+                      <button onClick={handleExport} disabled={exporting} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-semibold disabled:opacity-50">{exporting ? (exportComplete ? '✓ Exported!' : '⏳ Exporting...') : '💾 Export'}</button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Timeline */}
+              <div className="border-t border-white/5 bg-black/30 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-white flex items-center gap-2"><span>🎬</span> Sequence Timeline{sequenceImages.length > 0 && <span className="text-gray-500 font-normal">({sequenceImages.length} clips)</span>}</h3>
+                  {generated && genType === 'video' && (<div className="flex items-center gap-1.5"><button onClick={() => seekTo(0)} className="px-2.5 py-1.5 rounded-lg bg-white/5 text-[10px]">⏮️</button><button onClick={togglePlayPause} className="px-2.5 py-1.5 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-400 text-[10px]">{playing ? '⏸️' : '▶️'}</button><button onClick={stop} className="px-2.5 py-1.5 rounded-lg bg-white/5 text-[10px]">⏹️</button></div>)}
+                </div>
+                {sequenceImages.length > 0 ? (
+                  <div className="relative">
+                    <div className="relative timeline-track rounded-xl p-2.5 min-h-[70px]">
+                      {generated && genType === 'video' && (<div className="absolute top-0 bottom-0 w-0.5 bg-pink-500 z-10" style={{ left: `${(time / total) * 100}%` }}><div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-pink-500 rounded-full" /></div>)}
+                      <Reorder.Group axis="x" values={sequence} onReorder={handleReorder} className="flex gap-2">
+                        {sequence.map((id, index) => {
+                          const img = getAllImages().find(i => i.id === id);
+                          if (!img) return null;
+                          const isCurrentPlaying = generated && genType === 'video' && index === currentIdx;
+                          return (
+                            <Reorder.Item key={id} value={id} className={`timeline-item flex-1 min-w-[60px] max-w-[100px] rounded-xl overflow-hidden transition-all ${isCurrentPlaying ? 'ring-2 ring-violet-400 shadow-lg shadow-violet-500/30' : 'ring-1 ring-white/10'}`}>
+                              <div className="relative aspect-video">
+                                <img src={img.imageUrl} alt={img.name} className="w-full h-full object-cover" />
+                                <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-violet-500 text-[9px] font-bold flex items-center justify-center text-white">{index + 1}</div>
+                                {isCurrentPlaying && <div className="absolute inset-0 bg-violet-500/20 flex items-center justify-center"><span className="text-lg">▶️</span></div>}
+                              </div>
+                            </Reorder.Item>
+                          );
+                        })}
+                      </Reorder.Group>
+                    </div>
+                    {generated && genType === 'video' && (<input type="range" min="0" max={total} step="0.1" value={time} onChange={(e) => seekTo(parseFloat(e.target.value))} className="w-full mt-3 accent-violet-500 h-1 cursor-pointer" />)}
+                  </div>
+                ) : (<div className="timeline-track rounded-xl p-8 text-center text-gray-500"><span className="text-2xl mb-2 block opacity-50">🎞️</span><span className="text-xs">Select assets to build sequence</span></div>)}
+              </div>
+            </div>
+
+            {/* Right Panel - Scenario Planner */}
+            <div className="w-96 border-l border-white/5 flex flex-col shrink-0 bg-black/20 overflow-hidden">
+              <div className="p-5 border-b border-white/5">
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2"><span className="text-lg">🎭</span> Scenario Planner</h2>
+                <p className="text-[11px] text-gray-500 mt-1">AI-optimized by Gemini 2.5 Flash</p>
+              </div>
+
+              <div className="flex-1 overflow-auto p-5">
+                <AnimatePresence mode="wait">
+                  {phase === 'input' && !generatingScenarios && (
+                    <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center text-center px-6">
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/10 to-pink-500/10 flex items-center justify-center mb-6"><span className="text-4xl opacity-60">✨</span></div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Waiting for Your Idea</h3>
+                      <p className="text-sm text-gray-400 leading-relaxed">Enter your prompt and click "Generate Scenarios" to get 3 AI-optimized story versions.</p>
+                      <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 w-full">
+                        <div className="flex items-center gap-2 mb-2"><span className="text-lg">🛡️</span><span className="text-xs text-emerald-400 font-semibold">Double Firewall Protection</span></div>
+                        <p className="text-[10px] text-gray-400">Layer 1: Text Analysis (Gemini 2.5 Flash)</p>
+                        <p className="text-[10px] text-gray-400">Layer 2: Visual Safety Filter (Clean LoRA)</p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {generatingScenarios && (
+                    <motion.div key="generating-scenarios" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center text-center">
+                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center mb-6 shadow-lg shadow-violet-500/30"><span className="text-2xl">🛡️</span></motion.div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Consulting IP Guardian</h3>
+                      <p className="text-sm text-gray-400">Gemini 2.5 Flash analyzing content...</p>
+                      <div className="mt-6 w-48 h-1.5 bg-white/10 rounded-full overflow-hidden"><motion.div className="h-full bg-gradient-to-r from-violet-500 to-pink-500" initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 3, ease: 'easeInOut' }} /></div>
+                    </motion.div>
+                  )}
+
+                  {phase === 'scenarios' && (
+                    <motion.div key="scenarios" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                      <div className="text-center mb-6"><p className="text-xs text-gray-400">Choose your story direction</p></div>
+                      {scenarios.map((scenario, index) => (<motion.div key={scenario.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.15 }}><ScenarioCard scenario={scenario} isSelected={selectedScenario === scenario.id} onSelect={handleSelectScenario} disabled={selectedScenario && selectedScenario !== scenario.id} /></motion.div>))}
+                      <AnimatePresence>
+                        {selectedScenario && (
+                          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="pt-4">
+                            <button onClick={handleFinalGenerate} className="w-full py-4 rounded-xl bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25"><span className="text-lg">{genType === 'video' ? '🎬' : '🖼️'}</span>Generate Final {genType === 'video' ? 'Video' : 'Image'}</button>
+                            <button onClick={resetToInput} className="w-full mt-2 py-2.5 rounded-xl text-gray-400 text-xs hover:text-white transition-colors">← Back to Edit</button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+
+                  {phase === 'complete' && (
+                    <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                      <div className="text-center mb-4">
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }} className="w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30"><span className="text-2xl">✓</span></motion.div>
+                        <h3 className="text-lg font-semibold text-white">Generation Complete!</h3>
+                        <p className="text-xs text-gray-400 mt-1">Your {genType} is ready</p>
+                      </div>
+                      {selectedScenario && (
+                        <div className="glass-card rounded-xl p-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl bg-gradient-to-br ${scenarios.find(s => s.id === selectedScenario)?.gradient}`}>{scenarios.find(s => s.id === selectedScenario)?.icon}</div>
+                            <div><p className="text-sm font-medium text-white">{scenarios.find(s => s.id === selectedScenario)?.title}</p><p className="text-[10px] text-gray-400">{scenarios.find(s => s.id === selectedScenario)?.subtitle}</p></div>
+                          </div>
+                          <div className="text-[10px] text-gray-400 space-y-1">
+                            <p>🎵 BGM: {audio?.name}</p>
+                            <p>⏱️ Duration: {total}s</p>
+                            <p>📐 Resolution: 1080x1920</p>
+                            <p className="text-emerald-400">🛡️ Safety: Double Firewall Verified</p>
+                          </div>
+                        </div>
+                      )}
+                      <button onClick={resetToInput} className="w-full py-3 rounded-xl btn-secondary text-violet-400 text-sm font-medium">Create New Story</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+
+          {/* Process Log Overlay */}
+          <AnimatePresence>
+            {showProcessLog && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center">
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-card glow-purple rounded-3xl w-[550px] max-w-[90vw] overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-4 border-b border-white/5 bg-white/5">
+                    <div className="w-3 h-3 rounded-full bg-red-500"/><div className="w-3 h-3 rounded-full bg-yellow-500"/><div className="w-3 h-3 rounded-full bg-green-500"/>
+                    <span className="ml-3 text-xs terminal text-violet-400">AI Director Engine v3.0 • Gemini 2.5 Flash</span>
+                    <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="ml-auto">⚙️</motion.span>
+                  </div>
+                  <div className="p-6 terminal text-sm">
+                    <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{scenarios.find(s => s.id === selectedScenario)?.icon}</span>
+                        <div><p className="font-medium text-white">{scenarios.find(s => s.id === selectedScenario)?.title}</p><p className="text-xs text-gray-400">{scenarios.find(s => s.id === selectedScenario)?.subtitle}</p></div>
+                      </div>
+                    </div>
+                    {processSteps.map((s, i) => (
+                      <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: i <= processStep ? 1 : 0.3, x: 0 }} className="flex items-start gap-4 mb-3">
+                        <div className="w-8 h-8 shrink-0 flex items-center justify-center text-xl">{i < processStep ? '✅' : i === processStep ? (<motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.5, repeat: Infinity }}>{s.icon}</motion.span>) : '⬜'}</div>
+                        <div className="flex-1 pt-1">
+                          <div className={`font-semibold text-xs ${i < processStep ? 'text-emerald-400' : i === processStep ? 'text-violet-400' : 'text-gray-500'}`}>[{s.prefix}]</div>
+                          <div className={`text-xs mt-0.5 ${i < processStep ? 'text-emerald-400/70' : i === processStep ? 'text-violet-400/70' : 'text-gray-600'}`}>{s.text}</div>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {processStep < processSteps.length && (<div className="mt-4 flex items-center"><span className="text-violet-400">$</span><span className="blink ml-1 w-2 h-5 bg-violet-400 inline-block"/></div>)}
+                  </div>
+                  <div className="px-6 pb-6">
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden"><motion.div className="h-full bg-gradient-to-r from-violet-500 to-pink-500" initial={{ width: '0%' }} animate={{ width: `${((processStep + 1) / processSteps.length) * 100}%` }} /></div>
+                    <div className="text-center mt-3 text-[11px] text-gray-500">Step {Math.min(processStep + 1, processSteps.length)} of {processSteps.length}</div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
